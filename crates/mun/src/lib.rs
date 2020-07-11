@@ -97,11 +97,16 @@ where
         .subcommand(
             SubCommand::with_name("language-server")
         )
+        .subcommand("new")
+            .about("Create a new mun package at <path>")
+            .arg(opt("quiet", "No output printed to stdout").short("q"))
+            .arg(Arg::with_name("path").required(true))
         .get_matches_from_safe(args);
 
     match matches {
         Ok(matches) => match matches.subcommand() {
             ("build", Some(matches)) => build(matches),
+            ("new", Some(matches)) => new(matches),
             ("language-server", Some(matches)) => language_server(matches),
             ("start", Some(matches)) => start(matches).map(|_| ExitStatus::Success),
             _ => unreachable!(),
@@ -124,6 +129,22 @@ fn find_manifest(directory: &Path) -> Option<PathBuf> {
         current_dir = dir.parent();
     }
     None
+}
+
+fn new(matches: &ArgMatches) -> Result<ExitStatus, anyhow::Error> {
+    const default_file_content: &[u8] = b"\
+    fn entry() -> usize {
+        1+1
+    }
+    ";
+    log::trace!("starting new");
+    // unwrap is safe because "path" is required by clap
+    let path = match matches.value_of("path").unwrap();
+    let path = std::path::Path::new(path);
+    std::fs::create_dir_all(path)?;
+
+    let entry_file = std::fs::File::create(path.join("main.mun"));
+    entry_file.write_all(default_file_content);
 }
 
 /// This method is invoked when the executable is run with the `build` argument indicating that a
